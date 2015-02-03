@@ -1,0 +1,29 @@
+package network
+
+import(
+		"fmt"
+		"os"
+		"net"
+)
+func GetIP() string {
+	name, err := os.Hostname()
+	if err != nil {
+		fmt.Printf("Oops: %v\n", err)
+		return "fuck"
+	}
+
+	addrs, err := net.LookupHost(name)
+	if err != nil {
+		fmt.Printf("Oops: %v\n", err)
+		return "fuck"
+	}
+
+	/*
+	for _, a := range addrs {
+		fmt.Println(a)
+	}
+	*/
+
+	return addrs[0]
+}
+

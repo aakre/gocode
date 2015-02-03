@@ -1,0 +1,214 @@
+package network
+
+import (
+	"fmt"
+	"net"
+	"strings"
+	"time"
+	"io"
+)
+
+//Starts new gorutine that sets up a map over all tcp connections
+//listens for new connections and tries to make new connections.
+//The function also control access to the "shared" variable TCPMap
+func monitorTCPConnections(NetChan NetChannels) {
+	TCPMap := make(map[string]net.Conn)
+	defer func() {
+		if len(TCPMap) != 0{
+			for _,socket := range TCPMap {
+				socket.Close()
+			}
+		}
+	}()
+	go listenForTCPConnections()
+	go outbox(NetChan)
+	for {
+		//fmt.Println("network.monitorTCPConnections--> TCPMap: ", TCPMap)
+		select {
+		case newIP := <-internalChan.newIP:
+			_, inMap := TCPMap[newIP]
+			if !inMap {
+				go connectTCP(newIP)
+			} else {
+				fmt.Println("network.monitorTCPConnections--> IP already in TCPMap")
+			}
+		case newTCPElev := <-internalChan.updateTCPMap:
+			_, inMap := TCPMap[newTCPElev.ip]
+			if !inMap {
+				TCPMap[newTCPElev.ip] = newTCPElev.socket
+				fmt.Println("network.monitorTCPConnections--> Connection made to ", newTCPElev.ip)
+				go newTCPElev.inbox(NetChan)
+			} else {
+				fmt.Println("network.monitorTCPConnections--> A connection already exist")
+				newTCPElev.socket.Close()
+			} //If a connection already exist to this IP, ignore the update request and close the socket
+		case errorIP := <-internalChan.connectFail:
+			_, inMap := TCPMap[errorIP]
+			if inMap {
+				fmt.Println("network.monitorTCPConnections--> Could not connect to ", errorIP, "but a connection already exist")
+			} else {
+				fmt.Println("network.monitorTCPConnections--> Could not connect to ", errorIP) //Call for a panic?
+			}
+		case ip := <-internalChan.closeConn:
+			elevConn, inMap := TCPMap[ip]
+			if inMap {
+				elevConn.Close()
+				delete(TCPMap, ip)
+				fmt.Println("network.monitorTCPConnections--> Connection to ", ip, " has been terminated.")
+			} else {
+				fmt.Println("network.monitorTCPConnections--> No connection to close ", ip)
+			}
+		case ip := <-internalChan.getConn:
+			switch ip {
+				case "":
+					fmt.Println("network.monitorTCPConnections--> Attempting to retrieve random socket") 
+					size := len(TCPMap)
+					if size != 0 {
+						for _,socket := range TCPMap{
+							internalChan.sendConn <- socket //use first socket found (for HLP messages)
+							break
+						}
+					} else {
+						internalChan.sendConn <- nil
+					}
+				default:
+					socket, inMap := TCPMap[ip]
+					if inMap {
+						internalChan.sendConn <- socket
+					}else{
+						internalChan.sendConn <- nil
+					}
+			}
+		case <-internalChan.getAllConn:
+			if len(TCPMap) != 0 {
+				internalChan.sendAllConn <- TCPMap //Litt skeptisk, men dette kan gå bra
+			} else {
+				internalChan.sendAllConn <- nil
+			}
+		case <-internalChan.quitTCPMap:
+			return
+		}//End select
+	}//End for
+}//End func
+
+func (elevConn tcpElev) inbox(NetChan NetChannels) {
+	var msg [512]byte
+	for {
+		nBytes, err := elevConn.socket.Read(msg[0:])
+		switch err{
+			case nil:
+				newMail := Mail{IP: elevConn.ip, Msg: msg[0:nBytes]}
+				fmt.Println("Network.inbox--> msg received:", nBytes, "bytes")
+				NetChan.Inbox <- newMail
+			case io.EOF:
+				fmt.Println("Network.inbox--> Error:", err)
+				return
+			default: //Hva mer skjer her?
+				fmt.Println("Network.inbox--> Error:", err)
+				internalChan.closeConn <- elevConn.ip
+				time.Sleep(time.Millisecond)
+				go connectTCP(elevConn.ip)
+				return
+		}
+		time.Sleep(1 * time.Millisecond)
+	}
+}
+
+func connectTCP(elevIP string) {
+	MAXTRIES := 5
+	attempts := 0
+	for attempts < MAXTRIES {
+		fmt.Println("Network.connectTCP--> attempting to connect to ", elevIP)
+		service := elevIP + ":" + TCPport
+		_, err := net.ResolveTCPAddr("tcp4", service)
+		if err != nil {
+			fmt.Println("Network.connectTCP--> ResolveTCPAddr failed")
+			attempts++
+			continue
+		} else {
+			socket, err := net.Dial("tcp4", service)
+			if err != nil {
+				fmt.Println("Network.connectTCP--> DialTCP error")
+				fmt.Println("Network.connectTCP--> failed to connect to ", elevIP)
+				attempts++
+				continue
+			} else {
+				newTCPElev := tcpElev{elevIP, socket}
+				//socket.SetKeepAlive(true)
+				internalChan.updateTCPMap <- newTCPElev
+				break
+			}
+		}
+	}
+	if attempts == MAXTRIES {
+		internalChan.connectFail <- elevIP
+	}
+}
+
+func listenForTCPConnections() {
+	service := ":" + TCPport
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
+	if err != nil {
+		fmt.Println("Network.listenForTCPConnections--> TCP resolve error")
+		internalChan.setupfail <- true
+	} else {
+		listenSock, err := net.ListenTCP("tcp4", tcpAddr)
+		if err != nil {
+			fmt.Println("Network.connectTCP--> ListenTCP error")
+			internalChan.setupfail <- true
+		} else {
+			fmt.Println("Network.connectTCP--> listening for new connections")
+			for {
+				select {
+				case <-internalChan.quitListenTCP:
+					return
+				default:
+					socket, err := listenSock.Accept()
+					if err == nil {
+						elevIP := cleanUpIP(socket.RemoteAddr().String())
+						newTCPElev := tcpElev{elevIP, socket}
+						//socket.SetKeepAlive(true)
+						internalChan.updateTCPMap <- newTCPElev //The TCPMap will handle duplicates
+					}//End if
+				}//End select
+			} //End for
+		} //End else#2
+	} // End else#1
+}
+
+func cleanUpIP(garbage string) (cleanIP string) {
+	split := strings.Split(garbage, ":") //Hackjob since golang package faulty(?)
+	cleanIP = split[0]
+	return
+}
+
+func outbox(NetChan NetChannels) {
+	fmt.Println("Network.outbox()--> Started ...")
+	for {
+		select {
+		case mail := <-NetChan.SendToAll:
+			fmt.Println("Network.outbox()--> Attempting to send to all...")
+			internalChan.getAllConn <- true
+			TCPMap := <-internalChan.sendAllConn
+			if TCPMap != nil {
+				for ip := range TCPMap {
+					socket := TCPMap[ip] //Should be pointer to the socket. If buggy, dont use socket := ...
+					socket.SetWriteDeadline(time.Now().Add(200 * time.Millisecond))
+					nBytes,_ := socket.Write(mail.Msg)
+					fmt.Println("Network.outbox()--> Msg of", nBytes, "bytes sent to ", ip)
+				}
+			} else {
+				fmt.Println("Map is empty...")
+			}
+		case mail := <-NetChan.SendToOne:
+			fmt.Println("Network.outbox()--> Attempting to send to ", mail.IP)
+			internalChan.getConn <- mail.IP
+			socket := <-internalChan.sendConn
+			if socket != nil {
+				socket.SetWriteDeadline(time.Now().Add(200 * time.Millisecond))
+				nBytes,_ := socket.Write(mail.Msg)
+				fmt.Println("Network.outbox()--> Msg of", nBytes, "bytes sent to ", mail.IP)
+			}
+		}
+	}
+}

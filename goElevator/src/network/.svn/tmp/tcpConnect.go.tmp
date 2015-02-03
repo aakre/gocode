@@ -1,0 +1,89 @@
+package network
+<<<<<<< .mine
+
+import (
+	"fmt"
+	"net"
+	//"time"
+	//"encoding/json"
+)
+
+var tcpPort = ":9191"
+
+type tcpElev struct {
+	ip     string
+	socket *net.TCPConn
+}
+
+
+//Starts new gorutine that sets up a map over all tcp connections, starts two gorutines that
+//listens for new connections and tries to make new connections.
+//The function also control access to the "shared" variable connectedElevMap
+func ProtectTcpMapInit(comChan, connect, connectFail chan string) (chan *net.TCPConn) {
+	getTcpSock := make(chan *net.TCPConn)
+	go protectTcpMap(comChan, connect, connectFail, getTcpSock)
+	return getTcpSock 
+}
+
+func protectTcpMap(comChan, connect, connectFail chan string, getTcpSock chan *net.TCPConn) {
+	connectedElevMap := make(map[string]*net.TCPConn)
+	updateTcpMap := make(chan tcpElev)
+	go listenForTcpConnection(updateTcpMap)
+	go connectTcp(connect, connectFail, updateTcpMap)
+	for {
+		select {
+		case newTcpElev := <-updateTcpMap:
+			_, inMap := connectedElevMap[newTcpElev.ip]
+			if !inMap {
+				connectedElevMap[newTcpElev.ip] = newTcpElev.socket
+			} //If a connection already exist to this IP, just ignore the update request
+		}
+	}
+}
+
+
+func connectTcp(connect, connectFail chan string, updateTcpMap chan tcpElev) {
+	for {
+		elevIP := <-connect
+		fmt.Println("attempting to connect to ", elevIP)
+		service := elevIP + ":" + tcpPort
+		tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
+		if err != nil {
+			fmt.Println("failed to connect to ", elevIP)
+			connectFail <- elevIP
+			break
+		} //fail: report back to IMA
+		socket, err := net.DialTCP("tcp4", nil, tcpAddr)
+		if err != nil {
+			fmt.Println("failed to connect to ", elevIP)
+			connectFail <- elevIP
+			break
+		} //fail: report back to IMA
+		newTcpElev := tcpElev{socket.RemoteAddr().String(), socket}
+		updateTcpMap <- newTcpElev
+		fmt.Println("connection made to ", elevIP)
+	}
+}
+
+func listenForTcpConnection(updateTcpMap chan tcpElev) {
+	tcpAddr, _ := net.ResolveTCPAddr("tcp4", tcpPort)
+	//error handling
+	listenSock, err := net.ListenTCP("tcp4", tcpAddr)
+	fmt.Println("listens for new connections")
+	if err != nil {
+		//error handling
+
+		for {
+			socket, err := listenSock.AcceptTCP()
+			if err != nil {
+				elevIP := socket.RemoteAddr().String()
+				newTcpElev := tcpElev{elevIP, socket}
+				updateTcpMap <- newTcpElev
+				fmt.Println("connection made to ", elevIP)
+			}
+			//The tcpMap will handle duplicates
+		}
+	}
+}
+=======
+>>>>>>> .r74

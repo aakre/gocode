@@ -1,0 +1,41 @@
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/108/trunk/goElevator/src/elevdriver
+END
+channels.go
+K 25
+svn:wc:ra_dav:version-url
+V 60
+/svn/!svn/ver/71/trunk/goElevator/src/elevdriver/channels.go
+END
+channels.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/40/trunk/goElevator/src/elevdriver/channels.h
+END
+io.c
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/40/trunk/goElevator/src/elevdriver/io.c
+END
+elevdriver.go
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/108/trunk/goElevator/src/elevdriver/elevdriver.go
+END
+io.go
+K 25
+svn:wc:ra_dav:version-url
+V 54
+/svn/!svn/ver/71/trunk/goElevator/src/elevdriver/io.go
+END
+io.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/40/trunk/goElevator/src/elevdriver/io.h
+END

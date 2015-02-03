@@ -1,0 +1,213 @@
+// ------Artificial Intelligence------//
+// Makes systemwide decisions based on input from other modules
+
+package communication
+
+import (
+	"elevator"
+	"fmt"
+	"network"
+	"systemstate"
+	"time"
+)
+
+type system struct {
+	myIP        string
+	operational bool
+	peers       int
+	peerTimer   time.Time
+}
+
+func OperateSystem() {
+	sys := system{
+		myIP:        network.GetMyIP(),
+		operational: false,
+		peers:       0,
+	}
+
+	startup()
+	sys.attemptSync(NUMSTARTSYNC)
+	time.Sleep(time.Second)
+
+	sys.operational = true
+	fmt.Println("comm.AI--> The system is now operational and running...")
+
+	for {
+		select {
+		case cplOrder := <-elevChan.CplOrder:
+			sys.completedOrder(cplOrder)
+
+		case isOperational := <-elevChan.Operational:
+			sys.handleOperativeChange(isOperational)
+
+		case newIntOrder := <-commChan.intOrder:
+			if sys.operational {
+				sys.internalOrder(newIntOrder)
+			}
+
+		case newExtOrder := <-commChan.extOrder:
+			if sys.operational {
+				sys.externalOrder(newExtOrder)
+			}
+
+		case deadElevator := <-netChan.GetDeadElevator:
+			go sendDTH(deadElevator)
+			sys.auctionOrders(deadElevator)
+
+		case myNewOrder := <-commChan.extCommand:
+			elevChan.NewOrder <- myNewOrder
+			newStateOrder := systemstate.StateOrder{Id: sys.myIP, Order: myNewOrder}
+			stateChan.AddOrder <- newStateOrder
+			go sendINF(myNewOrder)
+
+		case theirNewOrder := <-commChan.extInform:
+			stateChan.AddOrder <- theirNewOrder
+
+		case theirCplOrder := <-commChan.extComplete:
+			stateChan.DelOrder <- theirCplOrder
+
+		case requesterIP := <-commChan.updateRequest:
+			stateChan.SendState <- true
+			sysStateCpy := <-stateChan.SysState
+			sendUPD(requesterIP, sysStateCpy)
+
+		case <-commChan.resync:
+			fmt.Println("comm.AI--> Decode error. Attempting resync...")
+			sys.attemptSync(NUMRESYNC)
+
+		case <-stateChan.Resync:
+			fmt.Println("comm.AI--> Systemstate mismatch. Attempting resync...")
+			sys.attemptSync(NUMRESYNC)
+
+		case numOfPeers := <-netChan.NumOfPeers:
+			sys.p2pConsistency(numOfPeers)
+
+		case <-netChan.Panic:
+			fmt.Println("***comm.AI--> PANIC from network. Closing system...")
+			return
+		case <-commChan.panic:
+			fmt.Println("***comm.AI--> PANIC from communication. Closing system...")
+			return
+		}
+	}
+}
+
+func startup() {
+	fmt.Println("Comm.AI--> Starting up subroutines...")
+	initChannels()
+	go elevator.HandleElevator(elevChan)
+	go systemstate.HandleSysState(stateChan)
+	go mailman()
+	network.StartNetwork(netChan)
+	time.Sleep(1 * time.Second)
+	go ReadOrderButtons()
+	go SetOrderLights()
+	time.Sleep(1 * time.Second)
+	fmt.Println("Comm.AI--> Startup complete")
+}
+
+func (sys *system) internalOrder(newIntOrder elevator.Order) {
+	//fmt.Println("Comm.AI--> Recived internal order")
+	stateChan.CheckOrder <- systemstate.StateOrder{sys.myIP, newIntOrder}
+	//fmt.Println("Comm.AI--> Checking if order already exists...")
+	if !<-stateChan.OrderExists {
+		fmt.Println("Comm.AI--> Received new internal order:", newIntOrder)
+		elevChan.NewOrder <- newIntOrder
+		stateChan.AddOrder <- systemstate.StateOrder{sys.myIP, newIntOrder}
+		go sendINF(newIntOrder)
+	} else {
+		//fmt.Println("Comm.AI--> Order already exists; ignoring")
+	}
+}
+
+func (sys *system) externalOrder(newExtOrder elevator.Order) {
+	//fmt.Println("Comm.AI--> Recived external order")
+	stateChan.CheckOrder <- systemstate.StateOrder{sys.myIP, newExtOrder}
+	//fmt.Println("Comm.AI--> Checking if order already exists...")
+	if !<-stateChan.OrderExists {
+		fmt.Println("Comm.AI--> Received new external order:", newExtOrder)
+		sys.runAuction(newExtOrder)
+	} else {
+		//fmt.Println("Comm.AI--> Order already exists; ignoring")
+	}
+}
+
+func (sys *system) handleOperativeChange(elevIsOperational bool) {
+	switch elevIsOperational {
+	case false:
+		if sys.operational {
+			fmt.Println("comm.AI--> Elevator is now non-operational. Will auction own external orders...")
+			sys.operational = false
+			sys.auctionOrders(sys.myIP)
+		}
+	case true:
+		if !sys.operational {
+			fmt.Println("comm.AI--> Elevator is now operational. Will recover saved orders...")
+			sys.operational = true
+			sys.recoverMyOrders()
+		}
+	}
+}
+
+func (sys *system) completedOrder(cplOrder elevator.Order) {
+	fmt.Println("Comm.AI--> The elevator has completed an order:", cplOrder)
+	stateChan.DelOrder <- systemstate.StateOrder{sys.myIP, cplOrder}
+	go sendCPL(cplOrder)
+}
+
+func (sys *system) attemptSync(attempts int) {
+	fmt.Println("comm.AI--> Asking for an update...")
+	for attempts > 0 {
+		go sendHLP()
+		select {
+		case newState := <-commChan.stateUpdate:
+			fmt.Println("comm.AI--> Received an update to the system state")
+			stateChan.SysState <- newState
+			sys.recoverMyOrders()
+			return
+		case <-time.After(SYNCWAIT * time.Millisecond):
+			attempts--
+		}
+	}
+	fmt.Println("comm.AI--> No update was given")
+}
+
+func (sys *system) recoverMyOrders() {
+	fmt.Println("comm.AI--> Recovering orders...")
+	stateChan.FindIntOrders <- sys.myIP
+	myIntOrders := <-stateChan.OrdersFound
+	stateChan.FindExtOrders <- sys.myIP
+	myExtOrders := <-stateChan.OrdersFound
+	for _, intOrder := range myIntOrders {
+		elevChan.NewOrder <- intOrder
+	}
+	for _, extOrder := range myExtOrders {
+		elevChan.NewOrder <- extOrder
+	}
+	fmt.Println("comm.AI--> Recovered", len(myIntOrders), "internal and", len(myExtOrders), "external orders")
+}
+
+func (sys *system) p2pConsistency(numOfPeers int) {
+	//When #peers changes to zero, this function is called to notify AI that we
+	//are alone. If #peers increases from 0 to 2 within some time, we assume the 
+	//two elevators constitute the system and we try to resync with them. 
+	switch {
+	case sys.peers == 0 && numOfPeers > 1:
+		sys.peers = numOfPeers
+		fmt.Println("comm.AI--> P2P: Found multiple peers. Syncing...")
+		sys.attemptSync(NUMRESYNC)
+	case sys.peers == 0 && numOfPeers == 1:
+		sys.peerTimer = time.Now()
+		sys.peers++
+		fmt.Println("comm.AI--> P2P: Peer found. Listening for others...")
+	case sys.peerTimer != time.Time{} && !time.Now().After(sys.peerTimer.Add(DETERSYNC*time.Millisecond)):
+		if numOfPeers > 1 {
+			fmt.Println("comm.AI--> P2P: Found multiple peers. Syncing...")
+			sys.attemptSync(NUMRESYNC)
+			sys.peers = numOfPeers
+			sys.peerTimer = time.Time{}
+		}
+	default:
+		sys.peers = numOfPeers
+	}
+}

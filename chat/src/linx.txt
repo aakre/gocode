@@ -1,0 +1,3 @@
+linx: zap
+linx: hei hva skejr?
+linx: test123

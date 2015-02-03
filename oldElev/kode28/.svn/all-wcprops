@@ -1,0 +1,143 @@
+K 25
+svn:wc:ra_dav:version-url
+V 37
+/svn/!svn/ver/35/trunk/oldElev/kode28
+END
+orders.c
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/kode28/orders.c
+END
+elev.h
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/kode28/elev.h
+END
+channels.h
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/35/trunk/oldElev/kode28/channels.h
+END
+signals.c
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/35/trunk/oldElev/kode28/signals.c
+END
+orders.h
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/kode28/orders.h
+END
+run_elevator.c
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/35/trunk/oldElev/kode28/run_elevator.c
+END
+signals.h
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/35/trunk/oldElev/kode28/signals.h
+END
+statemachine.c
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/35/trunk/oldElev/kode28/statemachine.c
+END
+io.c
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/35/trunk/oldElev/kode28/io.c
+END
+light_control.c
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/35/trunk/oldElev/kode28/light_control.c
+END
+run_elevator.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/35/trunk/oldElev/kode28/run_elevator.h
+END
+statemachine.h
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/35/trunk/oldElev/kode28/statemachine.h
+END
+light_control.h
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/35/trunk/oldElev/kode28/light_control.h
+END
+io.h
+K 25
+svn:wc:ra_dav:version-url
+V 42
+/svn/!svn/ver/35/trunk/oldElev/kode28/io.h
+END
+timer.c
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/35/trunk/oldElev/kode28/timer.c
+END
+direction.c
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/35/trunk/oldElev/kode28/direction.c
+END
+direction.h
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/35/trunk/oldElev/kode28/direction.h
+END
+timer.h
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/35/trunk/oldElev/kode28/timer.h
+END
+door_engine_control.c
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/35/trunk/oldElev/kode28/door_engine_control.c
+END
+elev.c
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/kode28/elev.c
+END
+enums.h
+K 25
+svn:wc:ra_dav:version-url
+V 45
+/svn/!svn/ver/35/trunk/oldElev/kode28/enums.h
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/kode28/Makefile
+END
+door_engine_control.h
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/35/trunk/oldElev/kode28/door_engine_control.h
+END

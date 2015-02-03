@@ -1,0 +1,13 @@
+package main
+
+import (
+	"fmt"
+	"network"
+)
+
+func main() {
+	ip := network.GetMyIP()
+	fmt.Println("GetMyIP(): ", ip)
+	//ip = network.GetIP()
+	//fmt.Println("GetIP(): ", ip)
+}

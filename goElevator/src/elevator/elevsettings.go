@@ -1,0 +1,23 @@
+package elevator
+
+const (
+	NFLOORS     = 4  // Number of floors each elevator has
+	ELEVLOOPINT = 10 // [ms] Time between each elevator cycle
+	DOORTIMER   = 1  // [s] Time before door can be closed after opening (or reset)
+	OBSTIMER    = 3  // [s] If an obstruction lasts longer, external orders will be given to others
+
+	// Time between each watcher cycle
+	WATCHINTa = 10  // [ms] Obs and Emerg
+	WATCHINTb = 100 // [ms] Floorlights
+
+	//Adjust this constant to compensate for "backlash" (slipping) in elevator
+	BACKLASHCONST = 12 // Range ~ [1 - 20]
+
+	// Settings for cost calculation
+	MAXCOST     = 9001          // Given when in emergency etc.
+	OBSCOST     = 1000          // Given when obstruction has timed out
+	FLOORWEIGHT = 10            // How hard traversing a floor is weighed
+	STOPWEIGHT  = DOORTIMER * 2 // How hard stopping at a floor is weighed
+	DIRWEIGHT   = 10            // How hard going in the wrong direction is weighed
+	QUEUEWEIGHT = 2             // How hard length of queue is weighed
+)

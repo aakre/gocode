@@ -1,0 +1,5 @@
+Naviger til mappe som inneholder src
+export GOPATH=$(pwd)
+test: echo $GOPATH
+
+cool story, bro!

@@ -1,0 +1,35 @@
+K 25
+svn:wc:ra_dav:version-url
+V 40
+/svn/!svn/ver/25/trunk/ttk4145/exercise2
+END
+client.c
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/25/trunk/ttk4145/exercise2/client.c
+END
+list.h
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/25/trunk/ttk4145/exercise2/list.h
+END
+server.c
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/25/trunk/ttk4145/exercise2/server.c
+END
+list.c
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/25/trunk/ttk4145/exercise2/list.c
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 49
+/svn/!svn/ver/16/trunk/ttk4145/exercise2/Makefile
+END

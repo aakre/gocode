@@ -1,0 +1,47 @@
+K 25
+svn:wc:ra_dav:version-url
+V 52
+/svn/!svn/ver/170/trunk/goElevator/src/communication
+END
+channels.go
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/170/trunk/goElevator/src/communication/channels.go
+END
+commsettings.go
+K 25
+svn:wc:ra_dav:version-url
+V 68
+/svn/!svn/ver/170/trunk/goElevator/src/communication/commsettings.go
+END
+input.go
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/170/trunk/goElevator/src/communication/input.go
+END
+output.go
+K 25
+svn:wc:ra_dav:version-url
+V 62
+/svn/!svn/ver/170/trunk/goElevator/src/communication/output.go
+END
+communication.go
+K 25
+svn:wc:ra_dav:version-url
+V 69
+/svn/!svn/ver/170/trunk/goElevator/src/communication/communication.go
+END
+auctions.go
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/170/trunk/goElevator/src/communication/auctions.go
+END
+ai.go
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/170/trunk/goElevator/src/communication/ai.go
+END

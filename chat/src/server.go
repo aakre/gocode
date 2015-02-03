@@ -1,0 +1,298 @@
+package main
+
+
+//register user routine should have a mechanism for determining connection retry
+//i.e. if user was recently connected
+import (
+		"fmt"
+		"net"
+		"time"
+		"encoding/json"
+		"strings"
+)
+
+const (
+	port = "31337"
+	WRITEDL = 100
+)
+
+type client struct{
+	username string
+	channels usrChan
+	public bool
+	ip string
+}
+
+type user struct {
+	username string
+	conn net.Conn
+}
+
+type Message struct {
+	Sender string
+	Receiver string
+	Payload string
+}
+
+type serverChannels struct {
+	addNewUser chan user
+	PrivateMsg, PublicMsg chan Message
+	checkAvailable chan client
+	checkAvailableResponse chan string
+	forward chan Message
+	TogglePublic chan string
+	getStatus chan bool
+	getStatusResponse chan string
+	quit chan string
+	lostConn chan string
+}
+
+type usrChan struct {
+	outbox chan Message
+	inbox chan Message
+	status chan []byte
+}
+
+var srvChan serverChannels
+
+func initChannels() {
+	srvChan.addNewUser = make(chan user)
+	srvChan.forward = make(chan Message)
+	srvChan.PrivateMsg = make(chan Message)
+	srvChan.PublicMsg = make(chan Message)
+	srvChan.checkAvailable = make(chan client)
+	srvChan.checkAvailableResponse = make(chan string)
+	srvChan.TogglePublic = make(chan string)
+	srvChan.getStatus = make(chan bool)
+	srvChan.getStatusResponse = make(chan string)
+	srvChan.quit = make(chan string)
+	srvChan.lostConn = make(chan string)
+}
+
+func main() {
+	fmt.Println("Server--->Starting...")
+	initChannels()
+	go acceptThread()
+	//Main loop//
+	conns := make(map[string]client)
+	fmt.Println("Server--->Running...")
+	for {
+		select{
+		case newUser:= <- srvChan.addNewUser:
+			newClient := client{
+				username: newUser.username,
+				channels: usrChan{outbox: make(chan Message), inbox: make(chan Message), status: make(chan []byte)},
+				public: false,
+				ip: cleanUpIP(newUser.conn.RemoteAddr().String()),
+			}
+			conns[newUser.username] = newClient
+			go handleConnection(newUser, newClient.channels)
+		case msg:= <-srvChan.PublicMsg:
+			fmt.Println("Attempting to pass on public message...")
+			for _, client := range conns {
+				fmt.Println(client.username)
+				if client.public {
+					client.channels.outbox <- msg
+					fmt.Println("Message passed on to", client.username)
+				} else {
+					fmt.Println("Client ", client.username, "is not in public chat...")
+				}
+			}
+		case msg:= <-srvChan.PrivateMsg:
+			client, inMap := conns[msg.Receiver]
+			if inMap {
+				client.channels.outbox <- msg
+			}
+		case toggleUser := <- srvChan.TogglePublic:
+			client, inMap := conns[toggleUser]
+			if inMap {
+				if client.public {
+					tmp := conns[toggleUser]
+					tmp.public = false
+					conns[client.username] = tmp
+					fmt.Println(toggleUser,"left public chat")
+				} else {
+					tmp := conns[toggleUser]
+					tmp.public = true
+					conns[client.username] = tmp
+					fmt.Println(toggleUser,"is now in public chat")
+				}
+			}
+		case <- srvChan.getStatus:
+			var users string
+			for username, client := range conns {
+				if client.public {
+					users += username + "!"
+				} else {
+					users += username + "?"
+				}
+			}
+			srvChan.getStatusResponse <- users
+		case newClient := <-srvChan.checkAvailable:
+			var response string
+			client, inMap := conns[newClient.username]
+			if !inMap  || client.ip == newClient.ip{ //Last expression due to possible reconn after disconn
+				response = "OK"
+			} else {
+				response = "NOK"
+			}
+			srvChan.checkAvailableResponse <- response
+		case nick := <-srvChan.quit:
+			delete(conns, nick)
+		case nick := <-srvChan.lostConn:
+			delete(conns, nick)
+		}
+	}
+}
+
+func acceptThread() {
+	listener:= initListener()
+	fmt.Println("Accepter--->Running...")
+	for {
+		conn, err := listener.Accept()
+		if err == nil {
+			go registerUser(conn)
+		} else {
+			//Log it
+		}
+	}
+}
+
+func registerUser(c net.Conn) {
+	var data [512]byte
+	complete := false
+	for !complete {
+		numbytes, err := c.Read(data[0:])
+		if err == nil && string(data[0:3]) == "REG"{
+			nick := string(data[3:numbytes])
+			fmt.Println("Checking if ", nick," is available")
+			srvChan.checkAvailable <- client{username: nick, ip: cleanUpIP(c.RemoteAddr().String())}
+			response:= <- srvChan.checkAvailableResponse
+			header := []byte("REG")
+			b := []byte(response)
+			b = append(header,b...)
+			c.Write(b)
+			if response == "OK" {
+				complete = true
+				newUsr := user{username: nick, conn: c}
+				srvChan.addNewUser <- newUsr
+			}
+		} else {
+			fmt.Println("Lost connection to unregistered user...")
+			return
+		}
+	}
+}
+
+func initListener() *net.TCPListener{
+	setupComplete := false
+	service := ":" + port
+	var listener *net.TCPListener
+	for !setupComplete {
+		addr, err := net.ResolveTCPAddr("tcp4", service)
+		if err == nil {
+			listener, err = net.ListenTCP("tcp4", addr)
+			if err == nil {
+				setupComplete = true
+			}
+		}
+	}//End for
+	fmt.Println("InitListener--->Setup completed...")
+	return listener
+}
+
+func handleConnection(usr user, usrCh usrChan) {
+	fmt.Printf("\nNew user %s! Hurray!\n", usr.username)
+	quitChan := make(chan bool)
+	go readMessages(usr, usrCh, quitChan)
+	for {
+		select {
+		case msg:= <- usrCh.outbox:
+			ready := false
+			for !ready {
+				b, err := json.Marshal(msg)
+				if err == nil {
+					ready = true
+					b = append([]byte("MSG"), b...)
+					usr.conn.SetWriteDeadline(time.Now().Add(WRITEDL * time.Millisecond))
+					usr.conn.Write(b)
+				} else {
+					//Log it
+					fmt.Println("Server: Marshal error", err)
+				}
+			}
+		case bytes := <-usrCh.status:
+			usr.conn.SetWriteDeadline(time.Now().Add(WRITEDL * time.Millisecond))
+			usr.conn.Write(bytes)
+		case <-quitChan:
+			return
+		}
+	}
+}
+
+func readMessages(usr user, usrCh usrChan, quitChan chan bool) {
+	var data [512]byte
+	for {
+		numBytes, err := usr.conn.Read(data[0:])
+		if err == nil {
+			header := string(data[0:3])
+			switch header {
+				case "PUB":
+					var msg Message
+					err := json.Unmarshal(data[3:numBytes], &msg)
+					if err == nil{
+						srvChan.TogglePublic <- msg.Payload
+					}
+				case "STS":
+					fmt.Println("Gathering server status...")
+					srvChan.getStatus <- true
+					status:= <-srvChan.getStatusResponse
+					m := Message{Sender: "SERVER", Payload: status}
+					newHeader := []byte("STS")
+					b, err := json.Marshal(m)
+					if err == nil {
+						b = append(newHeader,b...)
+						usrCh.status <- b
+					} else {fmt.Println("LOLOLOLOL") }
+				case "MSG":
+					var msg Message
+					err := json.Unmarshal(data[3:numBytes], &msg)
+					if err == nil{
+						if msg.Receiver == "PUBLIC" {
+							fmt.Println("Public message")
+							srvChan.PublicMsg <- msg
+						} else {
+							fmt.Println("Private message")
+							srvChan.PrivateMsg <- msg
+						}
+					}
+				case "BYE":
+					var msg Message
+					err := json.Unmarshal(data[3:numBytes], &msg)
+					if err == nil{
+						fmt.Println("Graceful quit. Client ", msg.Payload," is leaving...")
+						srvChan.quit <- msg.Payload
+					}
+			}
+		} else {
+			fmt.Println("Something went wrong with the connection :/...")
+			srvChan.lostConn <- usr.username //Inform of bogus connection/ungraceful quit
+			quitChan <- true
+			return
+		}
+	}
+}
+
+func cleanUpIP(garbage string) (cleanIP string) {
+	split := strings.Split(garbage, ":") //Hackjob to separate ip from local socket. (Seems like a "fault" in the net package)
+	cleanIP = split[0]
+	return
+}
+
+
+
+
+
+
+
+

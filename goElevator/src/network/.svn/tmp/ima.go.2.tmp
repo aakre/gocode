@@ -1,0 +1,250 @@
+package network
+
+
+//MEGAVIKTIG. ALLE FUNKSJONER SOM RETURNER EN KANAL MÅ KJØRE "MAKE" 
+//PÅ DENNE, ELLERS VIRKER INGENTING
+
+
+
+//Kødde med alf og grytes heis: spam udp port 9574
+//Terminology: IMA = "I'm Alive"
+//Litt bøggy TCP-oppkobling. Prøv å kommenter ut go listenForTCP.... på en pc og start programmene. 
+//Må fikses...
+import (
+	"fmt"
+	"net"
+	"time"
+	"strings"
+)
+<<<<<<< .mine
+
+const (
+	IMAPERIOD = 3000
+	IMALOSS   = 4
+	ALIVE     = 1
+)
+//(78, 91, 27, 255)(192, 168, 1, 255)
+=======
+const IMAPERIOD  = 3000
+>>>>>>> .r74
+var (
+<<<<<<< .mine
+	bcast       = net.IPv4(129,241,187,255)
+	bcastListen = net.IPv4(0, 0, 0, 0)
+	LOCALIP     = GetIP()
+	port        = 34300
+	protocol    = "udp4"
+=======
+	bcast       = "129.241.187.255"
+	LOCALIP     = GetMyIP()
+	UDPport     = "9001"
+	TCPport 	= "9191"
+>>>>>>> .r74
+)
+
+<<<<<<< .mine
+/*
+
+	var err error
+	for !ready {
+		sock, err = net.ListenUDP(protocol, &net.UDPAddr{IP: bcast, Port: port})
+		if err != nil {
+			fmt.Println("Listen setup error")
+			//Handle this error. Terminate...
+		} else {
+			ready = true
+		}
+		time.Sleep(time.Second)
+	} 
+*/
+
+
+func IMAListen(comChan, updateImaMapCh chan string) {
+	
+	addr, err := net.ResolveUDPAddr(protocol, "129.241.187.255:9001")
+=======
+func IMAListen(comChan, newIPChan chan string) {
+	service := bcast + ":" + UDPport
+	addr, err := net.ResolveUDPAddr("udp4", service)
+>>>>>>> .r74
+	if err != nil {
+<<<<<<< .mine
+		fmt.Println("Resolve setup error")
+=======
+		fmt.Println("ResolveUDP error")
+>>>>>>> .r74
+		//Handle this error. Terminate...
+	}
+<<<<<<< .mine
+	sock, err := net.ListenUDP(protocol, addr)
+	if err != nil {
+		fmt.Println("Listen setup error")
+	}
+=======
+	sock, err := net.ListenUDP("udp4", addr)
+	if err != nil {
+		fmt.Println("ListenUDP error")
+	}
+	fmt.Println(LOCALIP)
+>>>>>>> .r74
+	var data [512]byte
+	for {
+		_, remoteAddr, err := sock.ReadFromUDP(data[0:])
+		if LOCALIP != remoteAddr.IP.String() {
+			fmt.Println("Something is recieved")
+			if err == nil {
+				elevIP := remoteAddr.IP.String()
+				fmt.Println(elevIP)
+				newIPChan <- elevIP
+			} else {
+				fmt.Println("UDP read error")
+			} //End if
+		}
+	} //End for
+} //End imaListen
+
+
+func IMASend() {
+	service := bcast + ":" + UDPport
+	addr, err := net.ResolveUDPAddr("udp4", service)
+	if err != nil {
+		fmt.Println("IMASend: Resolve error")
+	} 
+	imaSock, err := net.DialUDP("udp4", nil, addr)
+	if err != nil {
+		fmt.Println("dial error")
+	}
+	ima := []byte("1")
+	for {
+		_, err := imaSock.Write(ima) //If this send function fails several times, assume connection to others lost and... go to reboot?
+		if err != nil {
+			fmt.Println("UDP send error")
+		} else {
+			fmt.Println("ima sent")
+		}
+		time.Sleep(IMAPERIOD * time.Millisecond)
+	}
+}
+
+
+<<<<<<< .mine
+func ProtectImaMapInit(comChan, connect, connectFail chan string) (chan string) {
+	updateImaMapCh := make(chan string)
+	go protectImaMap(comChan, updateImaMapCh, connect, connectFail)
+	return updateImaMapCh 
+=======
+func FindElevators(comChan chan string) {
+	newIPChan := make(chan string)
+	go IMAListen(comChan, newIPChan)
+	go IMASend()
+	HandleTCPConnections(comChan, newIPChan)
+>>>>>>> .r74
+}
+
+
+
+
+type tcpElev struct {
+	ip     string
+	socket *net.TCPConn
+}
+
+
+//Starts new gorutine that sets up a map over all tcp connections
+//listens for new connections and tries to make new connections.
+//The function also control access to the "shared" variable TCPMap
+func HandleTCPConnections(comChan, newIPChan chan string) (chan *net.TCPConn) {
+	getTCPSock := make(chan *net.TCPConn)
+	go protectTCPMap(comChan, newIPChan, getTCPSock)
+	return getTCPSock
+}
+
+func protectTCPMap(comChan, newIPChan chan string, getTCPSock chan *net.TCPConn) {
+	TCPMap := make(map[string]*net.TCPConn)
+	updateTCPMap := make(chan tcpElev)
+	connectFail := make(chan string)
+	go listenForTCPConnection(updateTCPMap)
+	for {
+		select {
+		case newTcpElev := <-updateTCPMap:
+			//fmt.Println("==================================>", newTcpElev.ip)
+			_, inMap := TCPMap[newTcpElev.ip]
+			if !inMap {
+				TCPMap[newTcpElev.ip] = newTcpElev.socket
+				fmt.Println("Connection made to ", newTcpElev.ip)
+			} else {
+				fmt.Println("A connection already exist")
+			 }//If a connection already exist to this IP, just ignore the update request
+		case newIP := <- newIPChan:
+			_, inMap := TCPMap[newIP]
+			if !inMap {
+				go connectTCP(newIP, connectFail, updateTCPMap)
+			} else {
+				fmt.Println("IP already in TCPMap")
+			}
+		case failedToConnectIP := <- connectFail:
+			fmt.Println("Failed to connecet to ", failedToConnectIP)
+		}
+	}
+}
+
+
+func connectTCP(elevIP string, connectFail chan string, updateTCPMap chan tcpElev) {
+		fmt.Println("attempting to connect to ", elevIP)
+		service := elevIP + ":" + TCPport
+		tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
+		if err != nil {
+			fmt.Println("ResolveTCPAddr failed")
+			connectFail <- elevIP
+		} //fail: report back to IMA
+		socket, err := net.DialTCP("tcp4", nil, tcpAddr)
+		if err != nil {
+			fmt.Println("DialTCP error")
+			fmt.Println("failed to connect to ", elevIP)
+			connectFail <- elevIP
+		} else {
+			newTCPElev := tcpElev{socket.RemoteAddr().String(), socket}
+			//fmt.Println("=========================>", socket.RemoteAddr().String())
+			updateTCPMap <- newTCPElev
+		}
+}
+
+func listenForTCPConnection(updateTCPMap chan tcpElev) {
+	service := ":"+TCPport
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
+	if err != nil {
+		fmt.Println("TCP resolve error")
+	}
+	listenSock, err := net.ListenTCP("tcp4", tcpAddr)
+	fmt.Println("listens for new connections")
+	if err != nil {
+		fmt.Println("ListenTCP error")
+	}
+
+	for {
+		socket, err := listenSock.AcceptTCP()
+		if err == nil {
+			elevIP := socket.RemoteAddr().String()
+			newTCPElev := tcpElev{elevIP, socket}
+			updateTCPMap <- newTCPElev
+		}
+		//The TCPMap will handle duplicates
+	}
+}
+
+func GetMyIP() string{
+	allIPs, err := net.InterfaceAddrs()
+	if err!=nil {
+		fmt.Println("FUCK")
+	}
+	IPString := make([]string, len(allIPs))
+	for i:=range allIPs{
+		temp:=allIPs[i].String()
+		ip := strings.Split(temp, "/")
+		IPString[i] = ip[0]
+	}
+	myIP := IPString[2]
+	return myIP
+}
+
+

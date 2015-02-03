@@ -1,0 +1,89 @@
+K 25
+svn:wc:ra_dav:version-url
+V 39
+/svn/!svn/ver/35/trunk/oldElev/heisdist
+END
+main.o
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/main.o
+END
+channels.h
+K 25
+svn:wc:ra_dav:version-url
+V 50
+/svn/!svn/ver/35/trunk/oldElev/heisdist/channels.h
+END
+elev.h
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/elev.h
+END
+io.o
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/heisdist/io.o
+END
+main.c
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/main.c
+END
+main.d
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/main.d
+END
+heis
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/heisdist/heis
+END
+io.c
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/heisdist/io.c
+END
+elev.o
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/elev.o
+END
+io.d
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/heisdist/io.d
+END
+elev.c
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/elev.c
+END
+elev.d
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/35/trunk/oldElev/heisdist/elev.d
+END
+io.h
+K 25
+svn:wc:ra_dav:version-url
+V 44
+/svn/!svn/ver/35/trunk/oldElev/heisdist/io.h
+END
+Makefile
+K 25
+svn:wc:ra_dav:version-url
+V 48
+/svn/!svn/ver/35/trunk/oldElev/heisdist/Makefile
+END

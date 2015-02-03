@@ -1,0 +1,65 @@
+K 25
+svn:wc:ra_dav:version-url
+V 47
+/svn/!svn/ver/170/trunk/goElevator/src/elevator
+END
+elevsettings.go
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/elevsettings.go
+END
+orders.go
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/orders.go
+END
+watchers.go
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/155/trunk/goElevator/src/elevator/watchers.go
+END
+elevator.go
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/elevator.go
+END
+motorcontrol.go
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/155/trunk/goElevator/src/elevator/motorcontrol.go
+END
+door.go
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/door.go
+END
+events.go
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/events.go
+END
+statemachine.go
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/statemachine.go
+END
+elevchannels.go
+K 25
+svn:wc:ra_dav:version-url
+V 63
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/elevchannels.go
+END
+cost.go
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/170/trunk/goElevator/src/elevator/cost.go
+END

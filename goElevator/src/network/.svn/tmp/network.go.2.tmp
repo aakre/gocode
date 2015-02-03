@@ -1,0 +1,59 @@
+package network
+
+import (
+	"fmt"
+	"net"
+	"time"
+)
+
+
+func StartNetwork(netChan NetChannels){
+	internalChanInit()
+	go IMAWatcher(netChan)
+	go IMAListen()
+	go IMASend()
+	go monitorTCPConnections(netChan)
+	for {
+		select {
+		case <-internalChan.setupfail:
+			fmt.Println("***net.Startup-> Setupfail. Retrying...")
+			internalChan.quitImaSend	<- true
+			internalChan.quitImaListen	<- true
+			internalChan.quitListenTCP	<- true
+			internalChan.quitTCPMap		<- true
+			time.Sleep(time.Millisecond) //Sleep to let functions finish
+			go IMAListen()
+			go IMASend()
+			go monitorTCPConnections(netChan)
+		case <- time.After(NETSETUP * time.Millisecond):
+			fmt.Println("net.Startup-> Network setup complete")
+			return
+		}
+	}
+}
+
+func internalChanInit() {
+	internalChan.setupfail = make(chan bool)
+	internalChan.ima = make(chan string)
+	internalChan.newIP = make(chan string)
+	internalChan.deadElevator = make(chan string)
+	internalChan.updateTCPMap = make(chan tcpElev)
+	internalChan.connectFail = make(chan string)
+	internalChan.getConn = make(chan string)
+	internalChan.sendConn = make(chan net.Conn)
+	internalChan.getAllConn = make(chan bool)
+	internalChan.sendAllConn = make(chan map[string]net.Conn)
+	internalChan.closeConn = make(chan string)
+	internalChan.quitImaSend  = make(chan bool)
+	internalChan.quitImaListen = make(chan bool)
+	internalChan.quitListenTCP = make(chan bool)
+	internalChan.quitTCPMap = make(chan bool)
+}
+	
+func (netChan *NetChannels)NetChanInit() {
+	netChan.GetDeadElevator = make(chan string)
+	netChan.SendDeadElevator = make(chan string)
+	netChan.SendToAll = make(chan Mail)
+	netChan.SendToOne = make(chan Mail)
+	netChan.Inbox = make(chan Mail)
+}

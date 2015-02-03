@@ -1,0 +1,59 @@
+K 25
+svn:wc:ra_dav:version-url
+V 46
+/svn/!svn/ver/172/trunk/goElevator/src/network
+END
+channels.go
+K 25
+svn:wc:ra_dav:version-url
+V 58
+/svn/!svn/ver/166/trunk/goElevator/src/network/channels.go
+END
+declare.go
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/149/trunk/goElevator/src/network/declare.go
+END
+tcpConnect.go
+K 25
+svn:wc:ra_dav:version-url
+V 59
+/svn/!svn/ver/73/trunk/goElevator/src/network/tcpConnect.go
+END
+netchannels.go
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/172/trunk/goElevator/src/network/netchannels.go
+END
+ima.go
+K 25
+svn:wc:ra_dav:version-url
+V 53
+/svn/!svn/ver/170/trunk/goElevator/src/network/ima.go
+END
+netsettings.go
+K 25
+svn:wc:ra_dav:version-url
+V 61
+/svn/!svn/ver/172/trunk/goElevator/src/network/netsettings.go
+END
+getIP.go
+K 25
+svn:wc:ra_dav:version-url
+V 55
+/svn/!svn/ver/170/trunk/goElevator/src/network/getIP.go
+END
+network.go
+K 25
+svn:wc:ra_dav:version-url
+V 57
+/svn/!svn/ver/172/trunk/goElevator/src/network/network.go
+END
+tcpConnections.go
+K 25
+svn:wc:ra_dav:version-url
+V 64
+/svn/!svn/ver/172/trunk/goElevator/src/network/tcpConnections.go
+END

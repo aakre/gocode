@@ -1,0 +1,92 @@
+package network
+
+//Kødde med alf og grytes heis: spam udp port 9574
+//BUG WHEN SENDING MESSAGE, TRY USING [512]BYTE
+import (
+	"fmt"
+	"net"
+	"time"
+)
+
+func IMAListen() {
+	service := bcast + ":" + UDPport
+	addr, err := net.ResolveUDPAddr("udp4", service)
+	if err != nil {
+		fmt.Println("ResolveUDP error")
+		//Handle this error
+	}
+	sock, err := net.ListenUDP("udp4", addr)
+	if err != nil {
+		fmt.Println("ListenUDP error")
+		//Handle this error
+	}
+	fmt.Println("local ", LOCALIP)
+	var data [512]byte
+	discoveredElev := make(map[string]chan int)
+	for {
+		_, remoteAddr, err := sock.ReadFromUDP(data[0:])
+		if err != nil {
+			fmt.Println("ReadFromUDP error")
+			break
+		}
+		if LOCALIP != remoteAddr.IP.String() {
+<<<<<<< .mine
+			fmt.Println(string(data[0:]), " is received")
+=======
+			fmt.Println(string(data[0:])," is received")
+>>>>>>> .r110
+			if err == nil {
+				elevIP := remoteAddr.IP.String()
+				_, inMap := discoveredElev[elevIP]
+				if inMap {
+					discoveredElev[elevIP] <- ALIVE
+				} else {
+					fmt.Println("Setting up IMAWatcher,", elevIP)
+					discoveredElev[elevIP] = imaChan
+					go IMAWatcher(elevIP)
+					imaChan <- ALIVE
+					newIPChan <- elevIP
+				}
+			} else {
+				fmt.Println("UDP read error")
+			} //End if
+		}
+	} //End for
+} //End imaListen
+
+func IMAWatcher(elevIP string) {
+	for {
+		select {
+		case <-imaChan:
+			fmt.Println("Keeping elevator alive, ", elevIP)
+			//Reset timer
+		case <-time.After(IMALOSS * IMAPERIOD * time.Millisecond):
+			//Dead elevator
+			deadElevatorChan <- elevIP
+		}
+	}
+}
+
+func IMASend() {
+	service := bcast + ":" + UDPport
+	addr, err := net.ResolveUDPAddr("udp4", service)
+	if err != nil {
+		fmt.Println("IMASend: Resolve error")
+	}
+	imaSock, err := net.DialUDP("udp4", nil, addr)
+	if err != nil {
+		fmt.Println("dial error")
+	}
+	ima := []byte("penis")
+
+	for {
+		_, err := imaSock.Write(ima) //If this send function fails several times, assume connection to others lost and... go to reboot?
+		if err != nil {
+			fmt.Println("UDP send error")
+		} else {
+			fmt.Println("IMA sent")
+		}
+		time.Sleep(IMAPERIOD * time.Millisecond)
+	}
+}
+

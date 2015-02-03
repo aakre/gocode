@@ -1,0 +1,58 @@
+package network
+
+import "net"
+
+const (
+	IMAPERIOD	= 100
+	IMALOSS		= 4
+	ALIVEWATCH	= 10
+	NETSETUP	= 200
+	WRITEDL		= 10
+	READDL		= 10
+)
+
+var (
+	bcast   = "129.241.187.255"
+	LOCALIP = GetMyIP()
+	UDPport = "9001"
+	TCPport = "9191"
+)
+
+
+type internalChannels struct {
+	setupfail chan bool
+	ima chan string
+	newIP chan string
+	deadElevator chan string
+	updateTCPMap chan tcpElev
+	connectFail chan string
+	getConn chan string //send ip over this channel
+	sendConn chan net.Conn //receive conn over this channel
+	getAllConn chan bool
+	sendAllConn chan map[string]net.Conn
+	closeConn chan string
+	quitImaSend chan bool
+	quitImaListen chan bool
+	quitListenTCP chan bool
+	quitTCPMap chan bool
+}
+
+var internalChan internalChannels
+
+type NetChannels struct {
+	GetDeadElevator chan string
+	SendDeadElevator chan string
+	SendToAll chan Mail
+	SendToOne chan Mail
+	Inbox   chan Mail
+}
+
+type Mail struct {
+	IP  string
+	Msg []byte
+}
+
+type tcpElev struct {
+	ip     string
+	socket net.Conn
+}

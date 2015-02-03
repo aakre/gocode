@@ -1,0 +1,297 @@
+package communication
+
+import (
+	"elevator"
+	"encoding/json"
+	"fmt"
+	"network"
+	"systemstate"
+	"time"
+)
+
+//input channels: netChan, elevChan, stateChan, 
+
+type Identity struct {
+	IP string
+}
+
+func mailman() {
+	for {
+		newMail := <-netChan.Inbox
+		//fmt.Println("comm.mailman--> You've got mail!")
+		go openMail(newMail)
+	}
+}
+
+func openMail(mail network.Mail) {
+	msg := mail.Msg
+	start := 0
+	for i := 0; i < len(msg); i++ {
+		c := string(msg[i])
+		if c == "}" {
+			if i == len(msg)-1 {
+				go sortMail(mail.IP, msg[start:i+1])
+			} else if (i+4) < len(msg) && string(msg[i+4]) == "{" {
+				fmt.Println("comm.openMail--> decoding MSG")
+				go sortMail(mail.IP, msg[start:i+1])
+				start = i + 1
+			}
+		}
+	}
+}
+
+func sortMail(ip string, msg []byte) {
+	fmt.Println("comm.sortMail--> Attemping to decode")
+	header := string(msg[0:3])
+	switch header {
+	// Cases that involve AI in making a decision
+	case "CMD":
+		decodeCMD(ip, msg[3:])
+	case "INF":
+		decodeINF(ip, msg[3:])
+	case "CPL":
+		decodeCPL(ip, msg[3:])
+	case "HLP":
+		decodeHLP(ip)
+
+	// 'Reflex' cases that make decisions on their own
+	case "NEW":
+		decodeNEW(ip, msg[3:])
+	case "OFR":
+		decodeOFR(ip, msg[3:])
+	case "UPD":
+		decodeUPD(msg[3:])
+	case "DTH":
+		decodeDTH(msg[3:])
+	default:
+		fmt.Println("comm.sortMail--> Decoding failed... Unknown header:", header, ". Initiating resync")
+		// Resync in case lost message contained important state info
+		commChan.resync <- true
+	}
+}
+
+// ----Message decoding----
+// --AI involving cases--
+func decodeCMD(senderIP string, msgIn []byte) {
+	var myNewOrder elevator.Order
+	err := json.Unmarshal(msgIn, &myNewOrder)
+	if err == nil {
+		fmt.Println("comm.decode--> CMD decoded")
+		commChan.extCommand <- myNewOrder
+	} else {
+		fmt.Println("comm.decode--> CMD Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func decodeINF(senderIP string, msgIn []byte) {
+	var orderTaken elevator.Order
+	err := json.Unmarshal(msgIn, &orderTaken)
+	theirNewOrder := systemstate.StateOrder{Id: senderIP, Order: orderTaken}
+	if err == nil {
+		fmt.Println("comm.decode--> INF decoded")
+		commChan.extInform <- theirNewOrder
+	} else {
+		fmt.Println("comm.decode--> INF Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func decodeCPL(senderIP string, msgIn []byte) {
+	var orderComplete elevator.Order
+	err := json.Unmarshal(msgIn, &orderComplete)
+	theirCplOrder := systemstate.StateOrder{Id: senderIP, Order: orderComplete}
+	if err == nil {
+		fmt.Println("comm.decode--> CPL decoded")
+		commChan.extComplete <- theirCplOrder
+	} else {
+		fmt.Println("comm.decode--> CPL Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func decodeHLP(senderIP string) {
+	// A request for help (an update) can time out
+	// to prevent giving help when still in startup
+	fmt.Println("comm.decode--> HLP decoded")
+	select {
+	case commChan.updateRequest <- senderIP:
+	case <-time.After(SYNCWAIT * time.Millisecond):
+		fmt.Println("comm.decode--> HLP timeout")
+		commChan.panic <- true
+	}
+}
+
+// --'Reflex' cases--
+func decodeNEW(senderIP string, msgIn []byte) {
+	var newOrder elevator.Order
+	err := json.Unmarshal(msgIn, &newOrder)
+	if err == nil {
+		fmt.Println("comm.decode--> NEW decoded")
+		elevChan.GetCost <- newOrder
+		myIP := network.GetMyIP()
+		myCost := <-elevChan.SendCost
+		myOffer := Offer{myIP, myCost, newOrder}
+		sendOFR(senderIP, myOffer)
+	} else {
+		fmt.Println("comm.decode--> NEW Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func decodeOFR(senderIP string, msgIn []byte) {
+	var theirOffer Offer
+	err := json.Unmarshal(msgIn, &theirOffer)
+	if err == nil {
+		fmt.Println("comm.decode--> OFR decoded")
+		select {
+		case commChan.newOffer <- theirOffer:
+		case <-time.After((AUCTIONDURATION / 2) * time.Millisecond):
+			fmt.Println("comm.decode--> OFR timeout")
+		}
+	} else {
+		fmt.Println("comm.decode--> OFR Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func decodeDTH(msgIn []byte) {
+	var deadIP Identity
+	err := json.Unmarshal(msgIn, &deadIP)
+	if err == nil {
+		fmt.Println("comm.decode--> DTH decoded")
+		netChan.SendDeadElevator <- deadIP.IP
+	} else {
+		fmt.Println("comm.decode--> DTH Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func decodeUPD(msgIn []byte) {
+	var state systemstate.SysState
+	err := json.Unmarshal(msgIn, &state)
+	if err == nil {
+		fmt.Println("comm.decode--> UPD decoded")
+		select {
+		case commChan.stateUpdate <- state:
+		case <-time.After((SYNCWAIT / 2) * time.Millisecond):
+			fmt.Println("***comm.decode--> UPD timeout")
+		}
+	} else {
+		fmt.Println("comm.decode--> UPD Unmarshal error", err)
+		commChan.panic <- true
+	}
+}
+
+//----End of message decoding---
+
+// ----Message coding----
+func sendCMD(receiverIP string, newOrder elevator.Order) {
+	msgOut, err := json.Marshal(newOrder)
+	if err == nil {
+		header := []byte("CMD")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{IP: receiverIP, Msg: msgOut}
+		netChan.SendToOne <- mail
+	} else {
+		fmt.Println("***comm.send--> CMD marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendINF(orderTaken elevator.Order) {
+	msgOut, err := json.Marshal(orderTaken)
+	if err == nil {
+		header := []byte("INF")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		fmt.Println("comm.code--> Sending INF...")
+		netChan.SendToAll <- mail
+		fmt.Println("comm.code--> INF sendt")
+	} else {
+		fmt.Println("***comm.send--> INF marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendCPL(orderComplete elevator.Order) {
+	msgOut, err := json.Marshal(orderComplete)
+	if err == nil {
+		header := []byte("CPL")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		netChan.SendToAll <- mail
+	} else {
+		fmt.Println("***comm.send--> CPL marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendHLP() {
+	foo := Identity{""}
+	msgOut, err := json.Marshal(foo)
+	if err == nil {
+		header := []byte("HLP")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		netChan.SendToOne <- mail
+	} else {
+		fmt.Println("***comm.send--> HLP marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendNEW(newOrder elevator.Order) {
+	msgOut, err := json.Marshal(newOrder)
+	if err == nil {
+		header := []byte("NEW")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		netChan.SendToAll <- mail
+	} else {
+		fmt.Println("***comm.send--> NEW marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendOFR(receiverIP string, myOffer Offer) {
+	msgOut, err := json.Marshal(myOffer)
+	if err == nil {
+		header := []byte("OFR")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{IP: receiverIP, Msg: msgOut}
+		netChan.SendToOne <- mail
+	} else {
+		fmt.Println("***comm.send--> OFR marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendUPD(receiverIP string, sysStateCpy systemstate.SysState) {
+	msgOut, err := json.Marshal(sysStateCpy)
+	if err == nil {
+		header := []byte("UPD")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{IP: receiverIP, Msg: msgOut}
+		netChan.SendToOne <- mail
+	} else {
+		fmt.Println("***comm.send--> UPD marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+func sendDTH(deadIP string) {
+	deadID := Identity{deadIP}
+	msgOut, err := json.Marshal(deadID)
+	if err == nil {
+		header := []byte("DTH")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		netChan.SendToAll <- mail
+	} else {
+		fmt.Println("***comm.send--> DTH marshal error", err)
+		commChan.panic <- true
+	}
+}
+
+// ---End of message coding----

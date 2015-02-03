@@ -1,0 +1,238 @@
+package communication
+/*
+import (
+	"fmt"
+	"network"
+	"elevator"
+	"encoding/json"
+	"systemstate"
+)
+
+//input channels: NetChan, ElevChan, StateChan, 
+
+func Decode(mail network.Mail) {
+	msg := mail.Msg
+	fmt.Println("Attemping to decode: ", msg)
+	header := string(msg[0:3])
+	
+	switch header {
+	case "DTH":
+		decodeDTH(msg[3:])
+	case "NEW":
+		decodeNEW(mail.IP, msg[3:])
+	case "OFR":
+		decodeOFR(mail.IP, msg[3:])
+	case "CMD":
+		decodeCMD(mail.IP, msg[3:])
+	case "INF":
+		decodeINF(mail.IP, msg[3:])
+	case "CPL":
+		decodeCPL(mail.IP, msg[3:])
+	case "HLP":
+		decodeHLP(mail.IP)
+	case "UPD":
+		decodeUPD(msg[3:])
+	}	
+}
+
+//Decoding of messages
+func decodeDTH(msgIn []byte) {
+	var deadIP string
+	err := json.Unmarshal(msgIn, &deadIP)
+	if err!=nil {
+		NetChan.Death <- deadIP
+	}
+}
+
+func decodeNEW(senderIP string, msgIn []byte) {
+	var newOrder elevator.Order
+	err := json.Unmarshal(msgIn, &newOrder)
+	if err != nil {
+		ElevChan.GetCost <- newOrder
+		cost := <-ElevChan.SendCost
+		codeOFR(senderIP, cost)
+	}
+}
+
+type Offer struct {
+	IP string
+	Cost int
+}
+
+func decodeOFR(senderIP string, msgIn []byte) {
+	var orderCost int
+	err := json.Unmarshal(msgIn, &orderCost)
+	if err != nil {
+		//newOffer := Offer{IP:senderIP, Cost: orderCost}
+		//OFFERCHAN <- newOffer //kanalen finnes ikke enda...
+	}
+}
+
+func decodeCMD(senderIP string, msgIn []byte) {
+	var newOrder elevator.Order
+	err := json.Unmarshal(msgIn, &newOrder)
+	if err!=nil {
+		ElevChan <- newOrder
+		myIP := network.GetMyIP()
+		newStateOrder := systemState.StateOrder{Id: myIP, Order: newOrder}
+		StateChan.AddOrder <- newStateOrder
+		codeINF(newOrder)
+	}
+}
+
+
+func decodeINF(senderIP string, msgIn []byte) {
+	var orderTaken elevator.Order
+	err := json.Unmarshal(msgIn, &orderTaken)
+	inform := systemstate.StateOrder{Id: senderIP, Order: orderTaken}
+	if err!=nil {
+		StateChan.AddOrder <- inform
+	}
+}
+		
+func decodeCPL(senderIP string, msgIn []byte) {
+	var orderComplete elevator.Order
+	err := json.Unmarshal(msgIn, &orderComplete)
+	stateOrderComplete := systemstate.StateOrder{Id: senderIP, Order: orderComplete}
+	if err!=nil {
+		StateChan.DelOrder <- stateOrderComplete
+	}
+}
+	
+func decodeHLP(senderIP string) {
+	StateChan.SendState <- true
+	sysStateCpy := <- StateChan.SysState
+	msgOut, err := json.Marshal(sysStateCpy)
+	if err!=nil {
+		codeUPD(senderIP, msgOut)
+	}
+}
+
+func decodeUPD(msgIn []byte) {
+	var state systemstate.SysState
+	err := json.Unmarshal(msgIn, &state)
+	if err != nil {
+		StateChan.SysState <- state
+	}
+}
+	
+	
+//And now some coding of messages
+
+
+func codeDTH(deadIP string) { // variable containing all the orders of the dead elevator
+	msgOut,err := json.Marshal(deadIP)
+	if err!= nil {
+		header := []byte("DTH")
+		msgOut = append(header, msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		NetChan.SendToAll <- mail
+	}
+}
+	
+
+func codeOFR(receiverIP string, orderCost int) {
+	msgOut, err := json.Marshal(orderCost)
+	if err != nil {
+		header := []byte("OFR")
+		msgOut = append(header,msgOut...)
+		mail := network.Mail{IP: receiverIP, Msg: msgOut}
+		NetChan.SendToOne <- mail
+		//error handling?
+	} 
+}
+
+func codeNEW(newOrder elevator.Order) {
+	msgOut, err := json.Marshal(newOrder)
+	if err != nil {
+		header := []byte("NEW")
+		msgOut = append(header,msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		NetChan.SendToAll <- mail
+		//error handling?
+	} 
+}
+
+func codeCMD(receiverIP string, newOrder elevator.Order) {
+	msgOut, err := json.Marshal(newOrder)
+	if err != nil {
+		header := []byte("CMD")
+		msgOut = append(header,msgOut...)
+		mail := network.Mail{IP: receiverIP, Msg: msgOut}
+		NetChan.SendToOne <- mail
+		//error handling?
+	} 
+}
+
+func codeINF(orderTaken elevator.Order) {
+	msgOut, err := json.Marshal(orderTaken)
+	if err != nil {
+		header := []byte("INF")
+		msgOut = append(header,msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		NetChan.SendToAll <- mail
+		//error handling?
+	} 
+}
+
+func codeCPL(orderComplete elevator.Order) {
+	msgOut, err := json.Marshal(orderComplete)
+	if err != nil {
+		header := []byte("CPL")
+		msgOut = append(header,msgOut...)
+		mail := network.Mail{Msg: msgOut}
+		NetChan.SendToAll <- mail
+		//error handling?
+	} 
+}
+
+
+func codeHLP() {
+	header := []byte("HLP")
+	mail := network.Mail{Msg: header}
+	NetChan.SendToAll <- mail
+}
+
+func codeUPD(receiverIP string, msg []byte) {
+	header := []byte("UPD")
+	msg = append(header, msg...)
+	mail := network.Mail{IP: receiverIP, Msg: msg}
+	NetChan.SendToOne <- mail
+}
+
+*/
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	
+	

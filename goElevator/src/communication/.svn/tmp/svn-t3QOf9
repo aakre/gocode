@@ -1,0 +1,36 @@
+package communication
+
+import(
+	"elevator"
+	"systemstate"
+)
+
+type CommChannels struct{
+	IntOrder chan elevator.Order
+	ExtOrder chan elevator.Order
+}
+
+var commChan CommChannels
+var elevChan elevator.ElevChannels
+var stateChan systemstate.StateChannels
+
+func commChanInit(){
+	commChan.IntOrder = make(chan elevator.Order)
+	commChan.ExtOrder = make(chan elevator.Order)
+}
+
+func InitChannels(){
+	commChanInit()
+	elevator.ElevChanInit(elevChan)
+	systemstate.SysChanInig(stateChan)
+}
+
+
+var NetChan network.NetworkChannels
+
+func netChanInit() {
+	NetChan.Death = make(chan string)
+	NetChan.SendToAll = make(chan network.Mail)
+	NetChan.SendToOne = make(chan network.Mail)
+	NetChan.Inbox = make(chan network.Mail)
+}

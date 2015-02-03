@@ -1,0 +1,83 @@
+package network
+
+import(
+	"fmt"
+	"net"
+	"time"
+)
+const(
+<<<<<<< .mine
+	IMAservice = "255.255.255.255:9001"
+	protocol = "udp4"
+	IMAPERIOD = 500
+	IMALOSS = 4
+=======
+	IMAservice = ":9001"
+	protocol = "udp"
+	IMAPERIOD = 500
+	IMALOSS = 4
+>>>>>>> .r61
+	ALIVE = 1
+)
+
+
+func IMASetup()(*net.UDPConn, bool){
+	mcAddr, err := net.ResolveUDPAddr(protocol, IMAservice)
+	if err!= nil {
+		fmt.Println("resolve error")
+		return nil, false
+	}
+	mcSock, err := net.DialUDP(protocol,nil, mcAddr) //Maybe change to multicast
+	if err!= nil {
+		fmt.Println("listen error")
+		return mcSock, false
+	}
+	return mcSock, true //mc**** because we want to use multicast
+}
+
+func IMAListen(sock *net.UDPConn, comChan chan string){
+	var data [512]byte
+	elevatorMap := make(map[string]chan int)
+	for {
+		_, remoteAddr, err := sock.ReadFromUDP(data[0:])
+		if err == nil {
+			elevIP := string(remoteAddr.IP)
+			_, inMap := elevatorMap[elevIP]
+			if inMap {
+				elevatorMap[elevIP] <- ALIVE
+			} else {
+				imaChan := make(chan int)
+				elevatorMap[elevIP] = imaChan
+				go IMAWatcher(comChan, imaChan, elevIP)
+				imaChan <- ALIVE
+			}//End else	
+		}//End if
+	}//End for
+}//End imaListen
+
+
+func IMAWatcher(comChan chan string, ima chan int, ip string) {
+	for {
+		select{
+			case <-ima:
+				//"Reset" timer
+			case <-time.After(IMALOSS*IMAPERIOD*time.Millisecond):
+				//Death has occured
+				comChan <- ip
+				//Close channel? Delete from map?
+		}
+	}
+}
+
+func IMASend(imaSock *net.UDPConn){
+	ima :=[]byte("I am alive")
+	for{
+		_, err := imaSock.Write(ima) //Can have some error handling here
+		if err != nil{
+			fmt.Println("UDP send error")
+		} else {
+			fmt.Println("ima sent")
+		}
+		time.Sleep(IMAPERIOD*time.Millisecond)
+	}
+}

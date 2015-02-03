@@ -1,0 +1,172 @@
+package network
+
+import (
+	"fmt"
+	"net"
+	"strings"
+	"time"
+)
+
+//Starts new gorutine that sets up a map over all tcp connections
+//listens for new connections and tries to make new connections.
+//The function also control access to the "shared" variable TCPMap
+func monitorTCPConnections(NetChan NetChannels) {
+	TCPMap := make(map[string]net.Conn)
+	go listenForTCPConnection()
+	go sendMail(NetChan)
+	for {
+		fmt.Println("TCPMap: ", TCPMap)
+		select {
+		case newIP := <-newIPChan:
+			_, inMap := TCPMap[newIP]
+			if !inMap {
+				go connectTCP(newIP)
+			} else {
+				fmt.Println("IP already in TCPMap")
+			}
+		case newTCPElev := <-updateTCPMapChan:
+			_, inMap := TCPMap[newTCPElev.ip]
+			if !inMap {
+				TCPMap[newTCPElev.ip] = newTCPElev.socket
+				fmt.Println("Connection made to ", newTCPElev.ip)
+				go newTCPElev.readMail(NetChan)
+			} else {
+				fmt.Println("A connection already exist")
+<<<<<<< .mine
+				newTCPElev.socket.Close()
+			} //If a connection already exist to this IP, ignore the update request and close socket
+		case newIP := <-newIPChan:
+			_, inMap := TCPMap[newIP]
+			if !inMap {
+				go connectTCP(newIP)
+			} else {
+				fmt.Println("IP already in TCPMap")
+			}
+=======
+				newTCPElev.socket.Close()
+			} //If a connection already exist to this IP, ignore the update request and close the socket
+>>>>>>> .r119
+		case failedToConnectIP := <-connectFail:
+			fmt.Println("Failed to connect to ", failedToConnectIP)
+		case deadElevIP := <-deadElevatorChan:
+			fmt.Println("Elevator with IP ", deadElevIP, " has died. RIP.")
+			//WHAT DO WE DO NAO, GAD DAMMIT!?
+			TCPMap[deadElevIP].Close()
+			delete(TCPMap, deadElevIP)
+			NetChan.Death <- deadElevIP //Inform NetChan of dead elevator
+			//Make a new map/list over dead elevators?
+		case ip := <-getConnChan:
+			socket, inMap := TCPMap[ip]
+			if inMap {
+				sendConnChan <- socket
+			} else {
+				sendConnChan <- nil
+			}
+		case <-getAllConnChan:
+			if len(TCPMap) != 0 {
+				sendAllConnChan <- TCPMap //Litt skeptisk, men dette kan gå bra
+			} else {
+				sendAllConnChan <- nil
+			}
+		}
+	}
+}
+
+func (elevConn tcpElev) readMail(NetChan NetChannels) {
+	var msg [512]byte
+	for {
+		_, err := elevConn.socket.Read(msg[0:])
+		if err == nil {
+			newMail := Mail{IP: elevConn.ip, Msg: msg[0:]}
+			fmt.Println("msg received: ", string(msg[0:]))
+			NetChan.Inbox <- newMail
+		} else {
+			fmt.Println("Network.ReadMail--> Error:", err)
+			return
+		}
+		time.Sleep(100 * time.Millisecond)
+	}
+}
+
+func connectTCP(elevIP string) {
+	fmt.Println("attempting to connect to ", elevIP)
+	service := elevIP + ":" + TCPport
+	_, err := net.ResolveTCPAddr("tcp4", service)
+	if err != nil {
+		fmt.Println("ResolveTCPAddr failed")
+		connectFail <- elevIP //fail: report back to IMA
+	} else {
+		socket, err := net.Dial("tcp4", service)
+		if err != nil {
+			fmt.Println("DialTCP error")
+			fmt.Println("failed to connect to ", elevIP)
+			connectFail <- elevIP
+		} else {
+			newTCPElev := tcpElev{elevIP, socket}
+			//socket.SetKeepAlive(true)
+			updateTCPMapChan <- newTCPElev
+		}
+	}
+}
+
+func listenForTCPConnection() {
+	service := ":" + TCPport
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
+	if err != nil {
+		fmt.Println("TCP resolve error")
+	} else {
+		listenSock, err := net.ListenTCP("tcp4", tcpAddr)
+		fmt.Println("listens for new connections")
+		if err != nil {
+			fmt.Println("ListenTCP error")
+		} else {
+
+			for {
+				socket, err := listenSock.Accept()
+				if err == nil {
+					elevAddr := socket.RemoteAddr().String()
+					elevAddrSplit := strings.Split(elevAddr, ":") //Hackjob since golang package faulty(?)
+					elevIP := elevAddrSplit[0]
+					newTCPElev := tcpElev{elevIP, socket}
+					//socket.SetKeepAlive(true)
+					updateTCPMapChan <- newTCPElev
+				}
+				//The TCPMap will handle duplicates
+			} //End for
+		} //End else#2
+	} // End else#1
+}
+
+//ALTERNATIVE tcp something... 
+
+func sendMail(NetChan NetChannels) {
+	fmt.Println("Network.sendMail()--> Started ...")
+	for {
+		select {
+		case mail := <-NetChan.SendToAll:
+			fmt.Println("Network.sendMail()--> Attempting to send to all...")
+			getAllConnChan <- true
+			TCPMap := <-sendAllConnChan
+			if TCPMap != nil {
+				for i := range TCPMap {
+					socket := TCPMap[i] //Should be pointer to the socket. If buggy, dont use socket := ...
+					socket.SetWriteDeadline(time.Now().Add(200 * time.Millisecond))
+					socket.Write(mail.Msg)
+					fmt.Println("Network.sendMail()--> Msg sent to ", i)
+				}
+			} else {
+				fmt.Println("Map is empty...")
+			}
+		case mail := <-NetChan.SendToOne:
+			fmt.Println("Network.sendMail()--> Attempting to send to ", mail.IP)
+			getConnChan <- mail.IP
+			socket := <-sendConnChan
+			if socket != nil {
+				socket.SetWriteDeadline(time.Now().Add(200 * time.Millisecond))
+				socket.Write(mail.Msg)
+				fmt.Println("Network.sendMail()--> Msg sent to ", mail.IP)
+			}
+		}
+
+	}
+}

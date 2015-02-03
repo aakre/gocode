@@ -1,0 +1,279 @@
+package network
+
+import (
+	"fmt"
+	"math/rand"
+	"net"
+	"strings"
+	"time"
+)
+
+func manageTCPConnections() {
+	//Contains a map over all tcp connections and functions to handle events.
+	//Listens for new connections and tries to make new connections.
+	//The function control access to the "shared" variable "connections"
+	connections := connMap{make(map[string]connChans)}
+	go listenForTCPConnections()
+	for {
+		select {
+		case newIP := <-internalChan.newIP:
+			connections.handleNewIP(newIP)
+
+		case newTCPConnection := <-internalChan.updateTCPMap:
+			connections.handleNewConnection(newTCPConnection)
+
+		case errorIP := <-internalChan.connectFail:
+			connections.handleFailedToConnect(errorIP)
+
+		case errorIP := <-internalChan.connectionError:
+			connections.handleConnectionError(errorIP)
+
+		case closeIP := <-internalChan.closeConn:
+			connections.handleCloseConnection(closeIP)
+
+		case mail := <-externalChan.SendToAll:
+			connections.handleSendToAll(mail)
+
+		case mail := <-externalChan.SendToOne:
+			connections.handleSendToOne(mail)
+
+		case <-internalChan.quitTCPMap:
+			return
+		} //End select
+	} //End for
+} //End func
+
+func (connections *connMap) handleNewIP(newIP string) {
+	_, inMap := connections.tcpMap[newIP]
+	if !inMap {
+		go connectTCP(newIP)
+	} else {
+		fmt.Println("network.monitorTCPConnections-->", newIP, "already in connections")
+	}
+}
+
+func (connections *connMap) handleNewConnection(conn tcpConnection) {
+	//When connectTCP and listenForTCPConnections submit their connections, they end up here.
+	_, inMap := connections.tcpMap[conn.ip]
+	if !inMap {
+		connections.tcpMap[conn.ip] = connChans{send: make(chan Mail), quit: make(chan bool)} //Make channels for send/quit for each conn.handleConnection()
+		fmt.Println("network.monitorTCPConnections---> Connection made to ", conn.ip)
+		conn.sendChan = connections.tcpMap[conn.ip].send
+		conn.quit = connections.tcpMap[conn.ip].quit
+		go conn.handleConnection()
+		go peerUpdate(len(connections.tcpMap))
+	} else {
+		fmt.Println("network.monitorTCPConnections--> A connection already exist to", conn.ip)
+		conn.socket.Close() //If a connection already exist to this IP, ignore the update request and close the socket
+	}
+}
+
+func (connections *connMap) handleFailedToConnect(errorIP string) {
+	_, inMap := connections.tcpMap[errorIP]
+	if inMap {
+		fmt.Println("network.monitorTCPConnections--> Could not dial up ", errorIP, "but a connection already exist")
+	} else {
+		fmt.Println("***network.monitorTCPConnections--> Could not connect to ", errorIP)
+		internalChan.errorIP <- errorIP //Notify imaWatcher of erroneous ip. Maybe it has timed out?
+	}
+}
+
+func (connections *connMap) handleConnectionError(errorIP string) {
+	//The handleConnection() routine for each new connection has detected an error.
+	//Try a reconnect
+	_, inMap := connections.tcpMap[errorIP]
+	if inMap {
+		delete(connections.tcpMap, errorIP)
+	}
+	go connectTCP(errorIP)
+}
+
+func (connections *connMap) handleCloseConnection(closeIP string) {
+	connChans, inMap := connections.tcpMap[closeIP]
+	if inMap {
+		select {
+		case connChans.quit <- true:
+		case <-time.After(10 * time.Millisecond):
+		}
+		delete(connections.tcpMap, closeIP)
+		numOfConns := len(connections.tcpMap)
+		if numOfConns == 0 {
+			go peerUpdate(numOfConns) //Notify AI that we are alone (possibly disconnected from others)
+		}
+	} else {
+		fmt.Println("network.monitorTCPConnections--> No connection to close ", closeIP)
+	}
+}
+
+func (connections *connMap) handleSendToOne(mail Mail) {
+	switch mail.IP {
+	case "":
+		size := len(connections.tcpMap)
+		if size != 0 {
+			for _, connChans := range connections.tcpMap {
+				connChans.send <- mail //use first connection found (for HLP messages)
+				break
+			}
+		}
+	default:
+		connChans, inMap := connections.tcpMap[mail.IP]
+		if inMap {
+			connChans.send <- mail
+		} else {
+			internalChan.errorIP <- mail.IP //Notify ima. Maybe connection timed out?
+		}
+	}
+}
+
+func (connections *connMap) handleSendToAll(mail Mail) {
+	if len(connections.tcpMap) != 0 {
+		for _, connChans := range connections.tcpMap {
+			connChans.send <- mail
+		}
+	}
+}
+
+func (conn *tcpConnection) handleConnection() {
+	quitInbox := make(chan bool)
+	go conn.inbox(quitInbox)
+	fmt.Println("Network.handleConnection--> handleConnection for", conn.ip, "is running")
+	for {
+		select {
+		case mail := <-conn.sendChan:
+			conn.socket.SetWriteDeadline(time.Now().Add(WRITEDL * time.Millisecond))
+			_, err := conn.socket.Write(mail.Msg)
+			//nBytes, err := conn.socket.Write(mail.Msg)
+			if err == nil {
+				//fmt.Println("Network.handleConnection--> Msg of", nBytes, "bytes sent to ", conn.ip)
+			} else {
+				fmt.Println("***Network.handleConnection--> Error sending message to ", conn.ip, err)
+				internalChan.connectionError <- conn.ip //Notify manager of fault
+			}
+		case <-conn.quit:
+			conn.socket.Close()
+			fmt.Println("Network.handleConnections--> Connection to ", conn.ip, " has been terminated.")
+			return
+		case <-quitInbox:
+			conn.socket.Close()
+			fmt.Println("Network.handleConnections--> Connection to ", conn.ip, " has been terminated.")
+			internalChan.connectionError <- conn.ip
+			return
+		}
+	}
+}
+
+func (conn *tcpConnection) inbox(quitInbox chan bool) {
+	var msg [512]byte
+	for {
+		nBytes, err := conn.socket.Read(msg[0:])
+<<<<<<< .mine
+		switch err {
+		case nil:
+			newMail := Mail{IP: conn.ip, Msg: msg[0:nBytes]}
+			//fmt.Println("Network.inbox--> msg received:", nBytes, "bytes")
+			externalChan.Inbox <- newMail
+		default:
+			fmt.Println("Network.inbox--> Error:", err)
+			time.Sleep(IMAPERIOD * IMALOSS * 2 * time.Millisecond) // Sleep to give ima a chance to detect dead elevator
+			select {
+			case quitInbox <- true: //Notify connection handler
+			case <-time.After(WRITEDL * time.Millisecond):
+			}
+			return
+=======
+		switch err {
+		case nil:
+			newMail := Mail{IP: conn.ip, Msg: msg[0:nBytes]}
+			//fmt.Println("Network.inbox--> msg received:", nBytes, "bytes")
+			externalChan.Inbox <- newMail
+		default:
+			fmt.Println("***Network.inbox--> Error:", err)
+			time.Sleep(IMAPERIOD * IMALOSS * 2 * time.Millisecond) // Sleep to give ima a chance to detect dead elevator
+			select {
+			case quitInbox <- true: //Notify connection handler
+			case <-time.After(WRITEDL * time.Millisecond):
+			}
+			return
+>>>>>>> .r173
+		}
+	}
+}
+
+func connectTCP(ip string) {
+	attempts := 0
+	for attempts < CONNATMPT {
+		fmt.Println("Network.connectTCP--> attempting to connect to ", ip)
+		service := ip + ":" + TCPport
+		_, err := net.ResolveTCPAddr("tcp4", service)
+		if err != nil {
+			fmt.Println("***Network.connectTCP--> ResolveTCPAddr failed")
+			attempts++
+			time.Sleep(DIALINT * time.Millisecond)
+		} else {
+			randSleep := time.Duration(rand.Intn(500)+500) * time.Microsecond
+			fmt.Println("Network.connectTCP--> randSleep:", randSleep)
+			time.Sleep(randSleep)
+			socket, err := net.Dial("tcp4", service)
+			if err != nil {
+				fmt.Println("***Network.connectTCP--> DialTCP error when connecting to", ip)
+				attempts++
+				time.Sleep(DIALINT * time.Millisecond)
+			} else {
+				newTCPConnection := tcpConnection{ip: ip, socket: socket}
+				internalChan.updateTCPMap <- newTCPConnection //Successful connection made to ip
+				break
+			}
+		}
+	}
+	if attempts == CONNATMPT {
+		select {
+		case internalChan.connectFail <- ip: //Notify manager of failed connection
+		case <-time.After(CONNFAILTIMEOUT * time.Millisecond): //Manager may have been told to quit; timeout
+			return
+		}
+	}
+}
+
+func listenForTCPConnections() {
+	service := ":" + TCPport
+	tcpAddr, err := net.ResolveTCPAddr("tcp4", service)
+	if err != nil {
+		fmt.Println("***Network.listenForTCPConnections--> TCP resolve error")
+		internalChan.setupfail <- true
+	} else {
+		listenSock, err := net.ListenTCP("tcp4", tcpAddr)
+		if err != nil {
+			fmt.Println("***Network.connectTCP--> ListenTCP error")
+			internalChan.setupfail <- true
+		} else {
+			fmt.Println("Network.connectTCP--> listening for new connections")
+			for {
+				select {
+				case <-internalChan.quitListenTCP:
+					return
+				default:
+					socket, err := listenSock.Accept()
+					if err == nil {
+						ip := cleanUpIP(socket.RemoteAddr().String())
+						newTCPConnection := tcpConnection{ip: ip, socket: socket}
+						internalChan.updateTCPMap <- newTCPConnection //Submit new connection to manager.
+					} //End if
+				} //End select
+			} //End for
+		} //End else#2
+	} // End else#1
+}
+
+func peerUpdate(numOfPeers int) {
+	// Update times out so that if AI is in startup, they are ignored
+	select {
+	case externalChan.NumOfPeers <- numOfPeers:
+	case <-time.After(500 * time.Millisecond):
+	}
+}
+
+func cleanUpIP(garbage string) (cleanIP string) {
+	split := strings.Split(garbage, ":") //Hackjob to separate ip from local socket. (Seems like a "fault" in the net package)
+	cleanIP = split[0]
+	return
+}

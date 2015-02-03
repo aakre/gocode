@@ -1,0 +1,48 @@
+package network
+
+import (
+	"fmt"
+	"math/rand"
+	"time"
+)
+
+<<<<<<< .mine
+func StartNetwork(NetChan NetChannels) {
+=======
+func StartNetwork(NetChan NetChannels) {
+	rand.Seed(time.Now().UTC().UnixNano()) // Seed used when attempting to connect
+>>>>>>> .r173
+	internalChan.init()
+	externalChan = NetChan
+	go imaWatcher()
+	go imaListen()
+	go imaSend()
+	go manageTCPConnections()
+	for {
+		select {
+		case <-internalChan.setupfail:
+			fmt.Println("***net.Startup--> Setupfail. Retrying...")
+<<<<<<< .mine
+			internalChan.quitImaSend <- true
+			internalChan.quitImaListen <- true
+			internalChan.quitImaWatcher <- true
+			internalChan.quitListenTCP <- true
+			internalChan.quitTCPMap <- true
+			internalChan.quitConnectTCP <- true
+=======
+			internalChan.quitImaSend <- true
+			internalChan.quitImaListen <- true
+			internalChan.quitImaWatcher <- true
+			internalChan.quitListenTCP <- true
+			internalChan.quitTCPMap <- true
+>>>>>>> .r173
+			time.Sleep(time.Millisecond) //Sleep to let functions finish
+			go imaListen()
+			go imaSend()
+			go manageTCPConnections()
+		case <-time.After(NETSETUP * time.Millisecond):
+			fmt.Println("net.Startup--> Network setup complete")
+			return
+		}
+	}
+}

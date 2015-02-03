@@ -1,0 +1,121 @@
+package main
+
+import (
+		"fmt"
+		"crypto/tls"
+		"os"
+)
+
+const(
+	encUser = "b3l2aW5kLmFha3Jl"
+	encPass = "bWFubmUwMTA1"
+	defaultUser = "oyvind.aakre@gmail.com"
+)
+
+type mail struct{
+	sendTo string
+	from string
+	subject string
+	body string
+}
+
+func main() {
+	email:= composeMail()
+	//email:= mail{defaultUser, defaultUser, "blank", "some message"}
+	fmt.Println("Okay! Now ready to send your email!")
+	tls_sock, _ := tls.Dial("tcp", "smtp.gmail.com:465", nil)
+	fmt.Println("Dial up successfull...")
+	fmt.Println("Authenticating...")
+	auth(tls_sock)
+	fmt.Println("Sending...")
+	sendEmail(email, tls_sock)
+	fmt.Println("Email successfully sent!")
+}
+
+func auth(tls_sock *tls.Conn){
+	var buf [512]byte
+	var response string
+	_, err := tls_sock.Read(buf[0:])
+	response = string(buf[0:3])
+	fmt.Println(response, err)
+	
+	validate(response, "220")
+	
+	tls_sock.Write([]byte("EHLO"))
+	
+	
+	n, err2 := tls_sock.Write([]byte("auth login"))
+	fmt.Println(n, err2)
+	
+	n, err2 = tls_sock.Write([]byte(encUser))
+	fmt.Println(n, err2)
+	
+	
+	n, err2 = tls_sock.Write([]byte(encPass))
+	fmt.Println(n, err2)
+}
+
+func sendEmail(email mail, tls_sock *tls.Conn) {
+	n, err2 := tls_sock.Write([]byte("mail from: <" + defaultUser + ">"))
+	fmt.Println(n, err2)
+	
+	n, err2 = tls_sock.Write([]byte("rcpt to: <" + email.sendTo + ">"))
+	fmt.Println(n, err2)
+	
+	n, err2 = tls_sock.Write([]byte("data"))
+	fmt.Println(n, err2)
+	
+	n, err2 = tls_sock.Write([]byte("subject: <" + email.subject + ">"))
+	fmt.Println(n, err2)
+	
+	n, err2 = tls_sock.Write([]byte(""))
+	fmt.Println(n, err2)
+	n, err2 = tls_sock.Write([]byte(email.body))
+	fmt.Println(n, err2)
+	n, err2 = tls_sock.Write([]byte(""))
+	fmt.Println(n, err2)
+	n, err2 = tls_sock.Write([]byte("."))
+	fmt.Println(n, err2)
+	
+	
+	n, err2 = tls_sock.Write([]byte("quit"))
+	fmt.Println(n, err2)
+	tls_sock.Close()
+}
+
+func composeMail() mail {
+	fmt.Println("Send mail to: ")
+	sendTo := singleReadInput()
+	fmt.Println("Subject: ")
+	subject := singleReadInput()
+	fmt.Println("Ready to read message. End message with '$' \nMessage: ")
+	var message, input string
+	done := false
+	for !done {
+		input = singleReadInput()
+		if input == "$" {
+			done = true
+		} else {
+			message += input + " "
+		}
+	}
+	email := mail{sendTo, defaultUser, subject, message}
+	return email	
+}
+
+func singleReadInput() string {
+	var input string
+	for n, err := fmt.Scanf("%s", &input); err== nil; n,err = fmt.Scanf("%s", &input) {
+		if n!=0 && err== nil {
+			return input
+		}
+	}
+	fmt.Println("Something went wrong when reading your precious keystrokes... :'(")
+	return ""
+}
+
+func validate(response, code string) {
+	if response != code {
+		os.Exit(1)
+	}
+}

@@ -1,0 +1,77 @@
+V "GNAT Lib v2011"
+M P W=b
+P SS ZX
+R nnnnnnnnnvnnnnnnnnvnnvnvnvnnnnnnnnnnnnnvnnnnvnnnnvnvnnnnnnvnnnnnnnvnnnnnnnv1+nnnnnn
+
+U print_task%b		print_task.adb		e721d9f7 NE OO SU
+W ada%s			ada.ads			ada.ali
+W ada.calendar.delays%s	a-caldel.adb		a-caldel.ali
+W ada.real_time%s	a-reatim.adb		a-reatim.ali
+W ada.tags%s		a-tags.adb		a-tags.ali
+W ada.text_io%s		a-textio.adb		a-textio.ali
+W system%s		system.ads		system.ali
+W system.parameters%s	s-parame.adb		s-parame.ali
+W system.soft_links%s	s-soflin.adb		s-soflin.ali
+W system.task_info%s	s-tasinf.adb		s-tasinf.ali
+W system.tasking%s	s-taskin.adb		s-taskin.ali
+W system.tasking.stages%s  s-tassta.adb		s-tassta.ali
+
+D ada.ads		20110419093133 3ffc8e18
+D a-calend.ads		20110419093130 343c83dd
+D a-caldel.ads		20110419093130 9f20b83d
+D a-except.ads		20110419093131 4759ecee
+D a-finali.ads		20110419093131 b333d305
+D a-fihema.ads		20110419093131 1940728a
+D a-ioexce.ads		20110419093131 8b9de6cd
+D a-reatim.ads		20110419093132 63f07669
+D a-stream.ads		20110419093132 2ca4ee37
+D a-tags.ads		20110419093132 7b33f560
+D a-textio.ads		20110419093132 386df5d4
+D a-unccon.ads		20110419093133 f9eb8f06
+D interfac.ads		20110419093135 f77d8799
+D i-c.ads		20110419093135 5421119b
+D i-cstrea.ads		20110419093135 1bd72c32
+D print_task.adb	20130215133838 bcbc5a4a
+D system.ads		20110419093140 2d1a1afa
+D s-atacco.ads		20110419093136 1dc856ad
+D s-crtl.ads		20110419093137 ac77b159
+D s-exctab.ads		20110419093137 66e51330
+D s-ficobl.ads		20110419093137 443b9d66
+D s-finroo.ads		20110419093137 2dd85ce2
+D s-linux.ads		20110419093137 47911ab1
+D s-multip.ads		20110419093137 38ac9f73
+D s-osinte.ads		20110419093137 6e2d2e09
+D s-parame.ads		20110419093138 03aa3b01
+D s-pooglo.ads		20110419093138 542f33d0
+D s-secsta.ads		20110419093138 eea35a36
+D s-soflin.ads		20110419093138 607487c5
+D s-stache.ads		20110419093138 596fc1b4
+D s-stausa.ads		20110419093138 017a0a05
+D s-stalib.ads		20110419093138 f78bcf95
+D s-stoele.ads		20110419093138 facd7d98
+D s-stoele.adb		20110419093138 afc5dc80
+D s-stopoo.ads		20110419093138 5c51faf9
+D s-tasinf.ads		20110419093139 21316953
+D s-taspri.ads		20110419093139 af44aca8
+D s-taprop.ads		20110419093139 07f79e46
+D s-taskin.ads		20110419093139 b2eaee08
+D s-tassta.ads		20110419093139 e88ef99e
+D s-traent.ads		20110419093139 5221ee41
+D s-unstyp.ads		20110419093139 6ae15c76
+D s-wchcon.ads		20110419093139 bfeb2e3d
+X 1 ada.ads
+16K9*Ada 19e8 16|1r6 1r19 2r5 2r18
+X 8 a-reatim.ads
+39K13*Real_Time 139e18 16|1w23 2r22
+41O9*Time 16|10r24 21r24
+53V13*Clock{41O9} 16|10s32 21s32
+X 11 a-textio.ads
+49K13*Text_IO 471e16 16|1w10 2r9
+263U14*Put_Line 16|13s25 25s25
+X 16 print_task.adb
+4U11*Print_Task 4b11 34l5 34t15
+6t14 Hello 9b19 18l13 18t18
+7t14 World 20b19 30l13 30t18
+10o17 Next{8|41O9}
+21o17 Next{8|41O9}
+

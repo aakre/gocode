@@ -1,0 +1,65 @@
+V "GNAT Lib v2011"
+M P W=b
+P SS ZX
+R nnnnnnnnnnnnnnnnnnnnnnnnnvnnnnnnnnnnnnnnnvnnnnnnnnnnnnnnnnnnnnnnnnvnnnnnnnnnnnnnn
+
+U fibonacci%b		fibonacci.adb		10cd1ae9 NE OO SU
+W ada%s			ada.ads			ada.ali
+W ada.command_line%s	a-comlin.adb		a-comlin.ali
+W ada.text_io%s		a-textio.adb		a-textio.ali
+W system.concat_4%s	s-conca4.adb		s-conca4.ali
+W system.img_int%s	s-imgint.adb		s-imgint.ali
+W system.secondary_stack%s  s-secsta.adb	s-secsta.ali
+W system.val_int%s	s-valint.adb		s-valint.ali
+
+D ada.ads		20110419093133 3ffc8e18
+D a-comlin.ads		20110419093131 e0accaa5
+D a-except.ads		20110419093131 4759ecee
+D a-finali.ads		20110419093131 b333d305
+D a-fihema.ads		20110419093131 1940728a
+D a-ioexce.ads		20110419093131 8b9de6cd
+D a-stream.ads		20110419093132 2ca4ee37
+D a-tags.ads		20110419093132 7b33f560
+D a-textio.ads		20110419093132 386df5d4
+D a-unccon.ads		20110419093133 f9eb8f06
+D fibonacci.adb		20130215111608 c80c2598
+D interfac.ads		20110419093135 f77d8799
+D i-cstrea.ads		20110419093135 1bd72c32
+D system.ads		20110419093140 2d1a1afa
+D s-conca4.ads		20110419093137 025fe3be
+D s-crtl.ads		20110419093137 ac77b159
+D s-exctab.ads		20110419093137 66e51330
+D s-ficobl.ads		20110419093137 443b9d66
+D s-finroo.ads		20110419093137 2dd85ce2
+D s-imgint.ads		20110419093137 02dbe0c2
+D s-parame.ads		20110419093138 03aa3b01
+D s-pooglo.ads		20110419093138 542f33d0
+D s-secsta.ads		20110419093138 eea35a36
+D s-soflin.ads		20110419093138 607487c5
+D s-stache.ads		20110419093138 596fc1b4
+D s-stalib.ads		20110419093138 f78bcf95
+D s-stoele.ads		20110419093138 facd7d98
+D s-stoele.adb		20110419093138 afc5dc80
+D s-stopoo.ads		20110419093138 5c51faf9
+D s-traent.ads		20110419093139 5221ee41
+D s-unstyp.ads		20110419093139 6ae15c76
+D s-valint.ads		20110419093139 48a52a3f
+D s-wchcon.ads		20110419093139 bfeb2e3d
+X 1 ada.ads
+16K9*Ada 19e8 11|3r6 3r24 4r5 4r23
+X 2 a-comlin.ads
+38K13*Command_Line 139e21 11|3w10 4r9
+41V13*Argument_Count{natural} 11|14s12 18s20 22s45
+48V13*Argument{string} 11|22s36
+X 9 a-textio.ads
+49K13*Text_IO 471e16 11|3w28 4r27
+242U14*Put 11|36s9
+263U14*Put_Line 11|15s17 19s25 26s17
+X 11 fibonacci.adb
+7U11*Fibonacci 7b11 38l5 38t14
+8i9 A{natural} 31r24 32m17 36r80
+9i9 B{natural} 31r28 32r22 33m17
+10i9 Sum{natural} 31m17 33r22
+11i9 N{natural} 16m17 22m17 25r12 30r21 36r52
+30i13 I{integer}
+
